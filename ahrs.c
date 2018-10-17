@@ -67,7 +67,7 @@ volatile uint8_t g_can_int_set;	/* set when CAN controller interrupt signaled */
 volatile uint8_t errcode;
 
 // the can stack initialization struct
-canaero_init_t g_ci;
+canaero_init_t CAN_config;
 
 // the state
 enum ahrs_state g_state;
@@ -79,7 +79,7 @@ int g_static_air_enabled;
 int g_dynamic_air_enabled;
 
 // the cycle time (approx 80hz) in tenth milliseconds
-uint16_t g_cycle_time;
+uint32_t g_cycle_time;
 
 // adxl345 device
 struct adxl345_device g_adxl345_dev = {
@@ -198,7 +198,7 @@ failed(uint8_t err)
 
 /*-----------------------------------------------------------------------*/
 
-static void can_error(const can_error_t* err)
+static void can_error(struct can_device* dev, const can_error_t* err)
 {
 	printf_P(PSTR("*** can error:%d %d %d\n"), err->error_code, err->dev_buffer,
 			 err->dev_code);
@@ -214,7 +214,7 @@ static void canaero_emergency_event(const struct emerg_event* ee)
 {
 	if (ee->error_code == DISPLAY_BUFFER_OVERFLOW) {
 		g_state = AHRSLISTEN;
-		can_clear_tx_buffers();
+		can_clear_tx_buffers(&at90can_dev);
 		puts_P(PSTR("EE:switching to listen mode"));
 	}
 	printf_P(PSTR("EE(%u):%d %d %d\n"), ee->node, ee->error_code,
@@ -279,30 +279,30 @@ ioinit(void)
 	puts_P(PSTR("i2c initialized."));
 	
 	// setup the can initialization struct
-	g_ci.can_settings.speed_setting = CAN_250KBPS;
-	g_ci.can_settings.loopback_on = 0;
-	g_ci.can_settings.tx_wait_ms = 20;
-	g_ci.node_id = 2;
-	g_ci.svc_channel = 0;
-	g_ci.nod_msg_templates = nod_msg_templates;
-	g_ci.num_nod_templates = num_nod_templates;
-	g_ci.nsl_dispatcher_fn_array = nsl_dispatcher_fn_array;
-	g_ci.incoming_msg_dispatcher_fn = 0;
-	g_ci.emergency_event_fn = canaero_emergency_event;
+	CAN_config.can_settings.speed_setting = CAN_250KBPS;
+	CAN_config.can_settings.loopback_on = 0;
+	CAN_config.can_settings.tx_wait_ms = 20;
+	CAN_config.node_id = 2;
+	CAN_config.svc_channel = 0;
+	CAN_config.nod_msg_templates = nod_msg_templates;
+	CAN_config.num_nod_templates = num_nod_templates;
+	CAN_config.nsl_dispatcher_fn_array = nsl_dispatcher_fn_array;
+	CAN_config.incoming_msg_dispatcher_fn = 0;
+	CAN_config.emergency_event_fn = canaero_emergency_event;
 
 	// set the error function
 	at90can_dev.handle_error_fn = can_error;
 	
-	canaero_high_priority_service_filters(&g_ci);
+	canaero_high_priority_service_filters(&CAN_config);
 	
 	// now do the CAN stack
-	errcode = canaero_init(&g_ci, &at90can_dev);
+	errcode = canaero_init(&CAN_config, &at90can_dev);
 	if (errcode == CAN_FAILINIT)
 		offline();
 	puts_P(PSTR("canaero initialized."));
 	
 	// self test the CAN stack
-	errcode = canaero_self_test();
+	errcode = canaero_self_test(&CAN_config);
 	if (errcode != CAN_OK)
 		offline();
 	puts_P(PSTR("canaero self-test complete."));
@@ -398,18 +398,18 @@ main(void)
 	g_state = AHRSLISTEN;
 
 	// keep track of the last time
-	uint16_t lt = timer_current_time();
+	uint32_t lt = jiffie();
 	
     while(1)
     {
 		watchdog_reset();
 		
 		// write the eeprom if necessary
-		canaero_write_eeprom_task();
+		//canaero_write_eeprom_task();
 
 		// check for can interrupt
-		if(canaero_handle_interrupt() == CAN_INTERRUPT)
-			canaero_poll_messages();
+		if(canaero_handle_interrupt(&CAN_config) == CAN_INTERRUPT)
+			canaero_poll_messages(&CAN_config);
 		
         // 80 hz timer
         if (g_timer80_set)
@@ -417,7 +417,7 @@ main(void)
             g_timer80_set = 0;
 //			puts_P(PSTR("80hz"));
 			// find the current time in tenth ms
-			uint16_t ct = timer_current_time();
+			uint32_t ct = jiffie();
 #ifdef USE_GYRO
 			// read the data
 			if (g_gyros_enabled)
@@ -428,17 +428,17 @@ main(void)
 				adxl345_read_accel();
 #endif
 			// calc the elapsed time in tenth ms
-			g_cycle_time = timer_elapsed_time_tenth_ms(lt, ct);
+			g_cycle_time = timer_elapsed(lt, ct);
 			// reset the last time
 			lt = ct;
 //			puts_P(PSTR("end 80hz"));
 			if(g_state == AHRSACTIVE) {
-				canaero_send_messages(0,1);
+				canaero_send_messages(&CAN_config, 0, 1);
 #ifdef USE_GYRO
-				canaero_send_messages(4,7);
+				canaero_send_messages(&CAN_config, 4, 7);
 #endif
 #ifdef USE_ACCEL
-				canaero_send_messages(1,4);
+				canaero_send_messages(&CAN_config, 1, 4);
 #endif
 			}
         }
@@ -468,7 +468,7 @@ main(void)
 				bmp_device = 0;
 
 			if(g_state == AHRSACTIVE)
-				canaero_send_messages(7,9);
+				canaero_send_messages(&CAN_config, 7, 9);
 			
 //			puts_P(PSTR("end 20hz"));
         }

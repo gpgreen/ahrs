@@ -83,7 +83,7 @@ OBJDIR = .
 
 # VPATH
 #     Look for other sources, headers here
-VPATH = ../drivers ../i2cmaster ../canlibrary
+VPATH = ../libs/avr_drivers/drivers ../libs/avr_drivers/i2cmaster ../libs/avr_drivers/canlibrary
 
 # List C source files here. (C dependencies are automatically generated.)
 SRC = $(TARGET).c \
@@ -139,7 +139,7 @@ DEBUG = stabs
 #     Each directory must be seperated by a space.
 #     Use forward slashes for directory separators.
 #     For a directory that has spaces, enclose it in quotes.
-EXTRAINCDIRS = ../drivers ../i2cmaster ../canlibrary
+EXTRAINCDIRS = ../libs/avr_drivers/drivers ../libs/avr_drivers/i2cmaster ../libs/avr_drivers/canlibrary
 
 
 # Compiler flag to set the C Standard level.

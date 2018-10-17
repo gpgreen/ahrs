@@ -99,7 +99,7 @@ static void get_mis0_data(can_msg_t* msg)
 	// first byte is 1 if in LISTEN state
 	msg->data[4] = (g_state == AHRSLISTEN) ? 1 : 0;
 	// second byte is 1 if filtering is on
-	msg->data[5] = g_ci.can_settings.filters.filtering_on;
+	msg->data[5] = CAN_config.can_settings.filters.filtering_on;
 }
 
 static void get_mis1_data(can_msg_t* msg)
@@ -122,7 +122,7 @@ static void get_mis10_data(can_msg_t* msg)
 
 // MIS service reply
 // get module configuration
-uint8_t reply_mis(service_msg_id_t* svc, can_msg_t* msg)
+int reply_mis(canaero_init_t* proto, service_msg_id_t* svc, can_msg_t* msg)
 {
 	/* Module Information Service Request code 0 */
 	static canaero_svc_msg_tmpl_t t0 = {UCHAR2, 12, 0, get_mis0_data};
@@ -144,45 +144,45 @@ uint8_t reply_mis(service_msg_id_t* svc, can_msg_t* msg)
 
 	// ensure the data format is as we expect
 	if (msg->data[1] != NODATA)
-		return canaero_send_svc_reply_message(svc, &invalid);
+		return canaero_send_svc_reply_message(proto, svc, &invalid);
 		
 	uint8_t snd_stat;
 
 	// the message code gives the type of module configuration requested
 	switch (msg->data[3]) {
 	case 0:
-		snd_stat = canaero_send_svc_reply_message(svc, &t0);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t0);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code 0"));
 #endif
 		break;
 	case 1:
-		snd_stat = canaero_send_svc_reply_message(svc, &t1);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t1);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code 1"));
 #endif
 		break;
 	case 2:
-		snd_stat = canaero_send_svc_reply_message(svc, &t2);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t2);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code 2"));
 #endif
 		break;
 	case 3:
-		snd_stat = canaero_send_svc_reply_message(svc, &t3);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t3);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code 3"));
 #endif
 		break;
 	case 10:
-		snd_stat = canaero_send_svc_reply_message(svc, &t10);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t10);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code 10"));
 #endif
 		break;
 	default:
 		// we don't respond to these message codes
-		snd_stat = canaero_send_svc_reply_message(svc, &invalid);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &invalid);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MIS code unknown"));
 #endif
@@ -195,7 +195,7 @@ uint8_t reply_mis(service_msg_id_t* svc, can_msg_t* msg)
 
 // MCS service reply
 // set module configuration
-uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
+int reply_mcs(canaero_init_t* proto, service_msg_id_t* svc, can_msg_t* msg)
 {
 	/* Module Configuration Service Request code 0 */
 	static canaero_svc_msg_tmpl_t t0 = {UCHAR2, 13, 0, get_mis0_data};
@@ -216,7 +216,7 @@ uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
 	case 0:
 		// ensure the data format is as we expect
 		if (msg->data[1] != UCHAR2)
-			return canaero_send_svc_reply_message(svc, &invalid);
+			return canaero_send_svc_reply_message(proto, svc, &invalid);
 	
 		// set listen/active state
 		if (msg->data[4])
@@ -225,23 +225,23 @@ uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
 			g_state = AHRSACTIVE;
 		// second byte is filtering on/off
 		uint8_t reset = 0;
-		if (g_ci.can_settings.filters.filtering_on != msg->data[5])
+		if (CAN_config.can_settings.filters.filtering_on != msg->data[5])
 		{
 			// setup the filters as setting is changed
 			if (msg->data[5])
-				canaero_high_priority_service_filters(&g_ci);
+				canaero_high_priority_service_filters(&CAN_config);
 			else
-				canaero_no_filters(&g_ci);
+				canaero_no_filters(&CAN_config);
 			reset = 1;
 		}
 
-		snd_stat = canaero_send_svc_reply_message(svc, &t0);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t0);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MCS code 0"));
 #endif
 		if (reset) {
 			// reinitialize the canaero stack
-			errcode = canaero_init(&g_ci, g_can_device);
+			errcode = canaero_init(&CAN_config, CAN_config.can_dev);
 			if (errcode == CAN_FAILINIT)
 				offline();
 		}
@@ -249,15 +249,15 @@ uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
 	case 1:
 		// ensure the data format is as we expect
 		if (msg->data[1] != UCHAR2)
-			return canaero_send_svc_reply_message(svc, &invalid);
+			return canaero_send_svc_reply_message(proto, svc, &invalid);
 
 		// reset the message counters, and clear tx buffers, if requested
 		if (msg->data[5])
-			can_clear_tx_buffers();
+			can_clear_tx_buffers(CAN_config.can_dev);
 		if (msg->data[4])
-			canaero_reset_nod_message_sequence();
+			canaero_reset_nod_message_sequence(&CAN_config);
 
-		snd_stat = canaero_send_svc_reply_message(svc, &t1);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t1);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MCS code 1"));
 #endif
@@ -265,7 +265,7 @@ uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
 	case 10:
 		// ensure the data format is as we expect
 		if (msg->data[1] != UCHAR4)
-			return canaero_send_svc_reply_message(svc, &invalid);
+			return canaero_send_svc_reply_message(proto, svc, &invalid);
 	
 		// read and set the configuration variables
 		g_accelerometer_enabled = msg->data[4];
@@ -273,14 +273,14 @@ uint8_t reply_mcs(service_msg_id_t* svc, can_msg_t* msg)
 		g_static_air_enabled = msg->data[6];
 		g_dynamic_air_enabled = msg->data[7];
 		
-		snd_stat = canaero_send_svc_reply_message(svc, &t10);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &t10);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MCS code 10"));
 #endif
 		break;
 	default:
 		// we don't respond to these message codes
-		snd_stat = canaero_send_svc_reply_message(svc, &invalid);
+		snd_stat = canaero_send_svc_reply_message(proto, svc, &invalid);
 #ifdef CANAERODEBUG
 		puts_P(PSTR("replied to MCS code unknown"));
 #endif

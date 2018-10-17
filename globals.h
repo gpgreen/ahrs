@@ -19,7 +19,7 @@ extern int g_static_air_enabled;
 extern int g_dynamic_air_enabled;
 
 // the can stack initialization struct
-extern canaero_init_t g_ci;
+extern canaero_init_t CAN_config;
 
 // bmp085 device structures
 extern struct bmp085_dev_t g_bmp085_data[2];
@@ -28,7 +28,7 @@ extern struct bmp085_dev_t g_bmp085_data[2];
 extern l3g4200d_dev_t g_gyro_dev;
 
 // the cycle time (approx 80hz) in tenth milliseconds
-extern uint16_t g_cycle_time;
+extern uint32_t g_cycle_time;
 
 // error number
 extern volatile uint8_t errcode;
