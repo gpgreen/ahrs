@@ -15,15 +15,16 @@
 
 /*-----------------------------------------------------------------------*/
 /* functions available */
-#define HAVE_UART_DEVICE                1
 
 /* in this hardware, we are using the second serial port */
 #define UART1                           1
 
 /* define the size of the fifo buffers for the uart */
-#define FIFO_SIZE                       64
+#define TX_FIFO_BUFFER_SIZE             128
+#define RX_FIFO_BUFFER_SIZE             64
+
 /* define baud rate for serial comm */
-#define BAUD                            9600
+#define BAUD                            115200
 
 /*-----------------------------------------------------------------------*/
 

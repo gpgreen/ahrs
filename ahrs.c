@@ -97,6 +97,12 @@ l3g4200d_dev_t g_gyro_dev = {
 
 /*-----------------------------------------------------------------------*/
 
+// uart buffers
+uint8_t tx_fifo_buffer[TX_FIFO_BUFFER_SIZE];
+uint8_t rx_fifo_buffer[RX_FIFO_BUFFER_SIZE];
+
+/*-----------------------------------------------------------------------*/
+
 // control the leds
 
 void led1_on(void)
@@ -261,7 +267,8 @@ ioinit(void)
 	led2_on();
 	
 	// setup the serial hardware
-	uart_init();
+	uart_init(TX_FIFO_BUFFER_SIZE, tx_fifo_buffer,
+              RX_FIFO_BUFFER_SIZE, rx_fifo_buffer);
 	
 	puts_P(PSTR("AHRS"));
 	printf_P(PSTR("Hardware: %d Software: %d\n-------------------------\n"),
