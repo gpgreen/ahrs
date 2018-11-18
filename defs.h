@@ -10,8 +10,9 @@
 /*
  * Hardware and software revisions
  */
-#define HARDWARE_REVISION 4
-#define SOFTWARE_REVISION 1
+#define HARDWARE_REVISION               4
+#define APP_MAJOR_VERSION               0
+#define APP_MINOR_VERSION               1
 
 /*-----------------------------------------------------------------------*/
 /* functions available */
@@ -24,21 +25,21 @@
 #define RX_FIFO_BUFFER_SIZE             64
 
 /* define baud rate for serial comm */
-#define BAUD                            115200
+#define BAUD                            230400
 
 /*-----------------------------------------------------------------------*/
 
 /* DEBUGGING */
        
-#define AT90CANDEBUG (1)
-#define CANDEBUG (1)
-#define CANAERODEBUG (1)
+#define AT90CANDEBUG                    1
+#define CANDEBUG                        1
+#define CANAERODEBUG                    1
 //#define ADXL345DEBUG (1)
 //#define BMP085DEBUG (1)
 //#define L3G4200DDEBUG (1)
 
 /* GYRO Hack */
-#define L3G4200DSLEEP (1)
+#define L3G4200DSLEEP                   1
 
 /*-----------------------------------------------------------------------*/
 

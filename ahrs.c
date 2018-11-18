@@ -27,6 +27,7 @@
 #include "i2cmaster.h"
 #include "gpio.h"
 #include "timer.h"
+#include "timer1.h"
 #include "spi.h"
 #include "bmp085.h"
 #include "adxl345.h"
@@ -54,11 +55,35 @@ static FILE uart_istr = FDEV_SETUP_STREAM(NULL, uart_getchar, _FDEV_SETUP_READ);
 
 // 20 hz timer flag
 volatile uint8_t g_timer20_set;
-static uint8_t g_timer20_count;
 const uint8_t k_timer20_compare_count = 4;
 
 // 80 hz timer flag
 volatile uint8_t g_timer80_set;
+
+/*-----------------------------------------------------------------------*/
+
+void timer1_compareA(void)
+{
+	g_timer80_set = 1;
+    // every 'k_timer20_compare_count' compare match events is an 20 hz tick
+    static uint8_t timer20_count;
+	if (++timer20_count == k_timer20_compare_count)
+    {
+		timer20_count = 0;
+		g_timer20_set = 1;
+    }
+}
+
+static timer1_init_t timer1_settings = {
+    .scale = CLK8,
+    .compareA_cb = timer1_compareA,
+    .compareB_cb = 0,
+    // compare A triggers at 80Hz
+    .compareA_val = (F_CPU / 80 / 8),
+    .compareB_val = 0,
+};
+
+/*-----------------------------------------------------------------------*/
 
 // CAN controller flags
 volatile uint8_t g_can_int_set;	/* set when CAN controller interrupt signaled */
@@ -254,15 +279,8 @@ ioinit(void)
 	watchdog_reset_count_update();
 	
 	timer_init();
-	
-    // setup the 80 hz timer
-    // CTC mode, clk at F_CPU/8
-	TCCR1A = _BV(WGM12);
-	TCCR1B = _BV(CS11);
-    // set interrupt so that match = 80hz
-	OCR1A = (F_CPU / 80 / 8);
-    // set OC interrupt 1A
-    TIMSK1 |= _BV(OCIE1A);
+
+    timer1_init(&timer1_settings);
 
 	led2_on();
 	
@@ -271,8 +289,8 @@ ioinit(void)
               RX_FIFO_BUFFER_SIZE, rx_fifo_buffer);
 	
 	puts_P(PSTR("AHRS"));
-	printf_P(PSTR("Hardware: %d Software: %d\n-------------------------\n"),
-			 HARDWARE_REVISION, SOFTWARE_REVISION);
+	printf_P(PSTR("Hardware: %d Software: %d.%d\n-------------------------\n"),
+			 HARDWARE_REVISION, APP_MAJOR_VERSION, APP_MINOR_VERSION);
 	led2_off();
 	
 	// spi needs to be setup first
@@ -483,20 +501,3 @@ main(void)
     }
     return 0;
 }
-
-/*-----------------------------------------------------------------------*/
-
-/*
- * Timer compare output 1A interrupt
- */
-ISR(TIMER1_COMPA_vect)
-{
-	g_timer80_set = 1;
-    // every 'k_timer20_compare_count' compare match events is an 20 hz tick
-	if (++g_timer20_count == k_timer20_compare_count) {
-		g_timer20_count = 0;
-		g_timer20_set = 1;
-    }
-}
-
-/*-----------------------------------------------------------------------*/
