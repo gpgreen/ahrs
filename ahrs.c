@@ -290,7 +290,7 @@ ioinit(void)
 	
 	puts_P(PSTR("AHRS"));
 	printf_P(PSTR("Hardware: %d Software: %d.%d\n-------------------------\n"),
-			 HARDWARE_REVISION, APP_MAJOR_VERSION, APP_MINOR_VERSION);
+			 HARDWARE_REVISION, APP_VERSION_MAJOR, APP_VERSION_MINOR);
 	led2_off();
 	
 	// spi needs to be setup first

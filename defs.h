@@ -11,8 +11,8 @@
  * Hardware and software revisions
  */
 #define HARDWARE_REVISION               4
-#define APP_MAJOR_VERSION               0
-#define APP_MINOR_VERSION               1
+#define APP_VERSION_MAJOR               0
+#define APP_VERSION_MINOR               1
 
 /*-----------------------------------------------------------------------*/
 /* functions available */
